@@ -1,0 +1,8 @@
+services:
+  discordspotifystatus:
+    build:
+      context: .
+    environment:
+      PORT: 61174
+    ports:
+      - 61174:61174

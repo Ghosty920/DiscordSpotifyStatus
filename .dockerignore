@@ -1,0 +1,8 @@
+node_modules/
+.dockerignore
+.gitignore
+.prettierrc
+compose.yml
+Dockerfile
+knip.json
+README.md

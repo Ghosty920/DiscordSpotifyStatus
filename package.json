@@ -1,0 +1,30 @@
+{
+	"name": "discord-spotify-status",
+	"version": "1.0.0",
+	"description": "Change your discord name on servers based on the music you listen to.",
+	"main": "src/app.js",
+	"type": "module",
+	"scripts": {
+		"start": "node .",
+		"knip": "knip",
+		"format": "prettier --write src/**/*.js"
+	},
+	"keywords": [],
+	"author": "Ghosty",
+	"license": "GPL-3.0-only",
+	"packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
+	"dependencies": {
+		"chalk": "^5.6.2",
+		"debug": "^4.4.3",
+		"discord.js-selfbot-v13": "^3.7.1",
+		"fast-deep-equal": "^3.1.3",
+		"figlet": "^1.9.4",
+		"readline": "^1.3.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.1",
+		"knip": "^5.69.1",
+		"prettier": "^3.6.2",
+		"typescript": "^5.9.3"
+	}
+}
