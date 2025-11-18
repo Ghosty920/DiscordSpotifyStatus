@@ -14,13 +14,19 @@ export default async function getStatus() {
 		headers: { Authorization: 'Bearer ' + config.ACCESS_TOKEN },
 	});
 	if (!res.ok) return 1;
-	const data = await res.json();
+
+	let data;
+	try {
+		data = await res.json();
+	} catch {
+		return 2;
+	}
 	if (!data.is_playing) {
 		return 1;
 	}
 
 	let title = data.item.name;
-	title = (/^(.*?)(?:\s*\((?:feat|ft)[^)]+\))?$/gi.exec(title)[1]) ?? title;
+	title = /^(.*?)(?:\s*\((?:feat|ft)[^)]+\))?$/gi.exec(title)[1] ?? title;
 
 	return {
 		title: data.item.name,
@@ -52,7 +58,14 @@ export async function updateToken() {
 		return false;
 	}
 
-	const data = await res.json();
+	let data;
+	try {
+		data = await res.json();
+	} catch(err) {
+		console.error(err);
+		return false;
+	}
+	
 	config.ACCESS_TOKEN = data.access_token;
 	config.EXPIRES_AT = new Date(Date.now() + data.expires_in * 1000).getTime();
 	saveConfig();

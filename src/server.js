@@ -1,5 +1,5 @@
 import http from 'node:http';
-import config, {saveConfig} from './config.js';
+import config, { saveConfig } from './config.js';
 import { updateToken } from './status.js';
 import chalk from 'chalk';
 
@@ -49,7 +49,15 @@ export default function startServer(callback) {
 				return;
 			}
 
-			const data = await tokenRes.json();
+			let data;
+			try {
+				data = await tokenRes.json();
+			} catch(err) {
+				console.error(err);
+				res.writeHead(501);
+				res.end('Invalid data somehow, read the console.');
+				return 2;
+			}
 			config.REFRESH_TOKEN = data.refresh_token;
 			config.ACCESS_TOKEN = data.access_token;
 			config.EXPIRES_AT = new Date(Date.now() + data.expires_in * 1000).getTime();
