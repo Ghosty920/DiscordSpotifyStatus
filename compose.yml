@@ -1,7 +1,7 @@
 services:
   discordspotifystatus:
     container_name: discordspotifystatus
-    restart: unless_stopped
+    restart: unless-stopped
     build:
       context: .
     environment:
