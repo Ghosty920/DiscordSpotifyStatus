@@ -8,3 +8,5 @@ services:
       PORT: 61174
     ports:
       - 61174:61174
+    volumes:
+      - ./config.json:/usr/src/app/config.json

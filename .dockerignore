@@ -3,6 +3,7 @@ node_modules/
 .gitignore
 .prettierrc
 compose.yml
+config.json
 Dockerfile
 knip.json
 README.md
