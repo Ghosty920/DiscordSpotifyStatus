@@ -1,5 +1,5 @@
 import { join as pathJoin } from 'node:path';
-import { ask } from './utils.js';
+import { ask, logError } from './utils.js';
 import fs from 'node:fs';
 import chalk from 'chalk';
 
@@ -84,15 +84,20 @@ export async function loadConfig() {
 async function checkClient(clientId, clientSecret) {
 	if (typeof clientId !== 'string' || typeof clientSecret !== 'string') return false;
 
-	const resp = await fetch('https://accounts.spotify.com/api/token', {
-		method: 'POST',
-		headers: {
-			Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		body: 'grant_type=client_credentials',
-	});
-	return resp.ok;
+	try {
+		const res = await fetch('https://accounts.spotify.com/api/token', {
+			method: 'POST',
+			headers: {
+				Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			body: 'grant_type=client_credentials',
+		});
+		return res.ok;
+	} catch (err) {
+		logError(err);
+		return false;
+	}
 }
 
 export function saveConfig() {

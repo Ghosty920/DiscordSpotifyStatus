@@ -10,7 +10,9 @@ export async function loginConfig() {
 		await login(config.DISCORD_TOKEN);
 		console.log(chalk.greenBright(`Logged in as ${client.user.tag}`));
 	} catch (err) {
-		if (err === 0) {
+		if (err.code === 'TOKEN_INVALID') {
+			if (!err.dss) console.error(chalk.red('The provided discord token in the config is invalid.'));
+
 			console.log(
 				`Open Discord. Press ${chalk.bgBlack('Ctrl + Shift + I')} (or whatever keys to open Developer Tools)`
 			);
@@ -35,17 +37,24 @@ export async function loginConfig() {
 					console.error(chalk.red('Invalid token. Please check and try again.'));
 				}
 			}
+			return;
 		}
+
+		console.error(err);
 	}
 }
 
 export function login(token) {
 	return new Promise((resolve, reject) => {
-		if (typeof token !== 'string') return reject(0);
+		if (typeof token !== 'string') return reject({ code: 'TOKEN_INVALID', dss: true });
 
 		client.login(token).catch(reject);
 		client.once('ready', () => {
 			resolve();
+		});
+		client.once('invalidated', async () => {
+			client.destroy();
+			await loginConfig();
 		});
 	});
 }

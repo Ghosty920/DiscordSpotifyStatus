@@ -1,6 +1,6 @@
 {
 	"name": "discord-spotify-status",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Change your discord name on servers based on the music you listen to.",
 	"main": "src/app.js",
 	"type": "module",

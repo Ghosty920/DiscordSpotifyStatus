@@ -22,3 +22,10 @@ export function sleep(ms) {
 		setTimeout(resolve, ms);
 	});
 }
+
+export function logError(err) {
+	if (!err) return console.error('Unknown error happened!');
+	if (typeof err === 'number') return;
+	if (err.code === 'EAI_AGAIN') return console.error(`DNS lookup timed out for ${err.hostname} (${err.code})`);
+	return console.error(err);
+}
