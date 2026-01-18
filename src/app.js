@@ -1,6 +1,7 @@
 import figlet from 'figlet';
 import chalk from 'chalk';
-import config, { loadConfig } from './config.js';
+import config, { loadConfig, addGuild, removeGuild, listGuilds } from './config.js';
+import readline from 'node:readline';
 import startServer from './server.js';
 import getStatus from './status.js';
 import { loginConfig, setName } from './client.js';
@@ -27,6 +28,43 @@ startServer(async (error, server) => {
 	}
 
 	await loginConfig();
+
+	const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+	console.log('Console commands: type "help" for list of commands.');
+
+	rl.on('line', (input) => {
+		const line = String(input || '').trim();
+		if (!line) return;
+		const parts = line.split(' ');
+		const cmd = parts.shift().toLowerCase().trim();
+
+		switch (cmd) {
+			case 'help':
+				console.log('Commands: add <ID> [format], remove <ID>, list, help');
+				break;
+			case 'add': {
+				const id = parts.shift();
+				if (!id) return console.log('Usage: add <ID> [format]');
+				const format = parts.join(' ').trim() || '[[DISPLAY]] - [[TITLE]]';
+				addGuild(id, format.length > 2 ? format : undefined);
+				break;
+			}
+			case 'remove': {
+				const id = parts.shift();
+				if (!id) return console.log('Usage: remove <ID>');
+				if (!removeGuild(id)) console.log('Guild not found');
+				break;
+			}
+			case 'list': {
+				const guilds = listGuilds();
+				if (!Object.keys(guilds).length) return console.log('No guilds configured.');
+				for (const [gid, fmt] of Object.entries(guilds)) console.log(`${gid}: ${fmt}`);
+				break;
+			}
+			default:
+				console.log('Unknown command. Type help for list.');
+		}
+	});
 
 	let lastStatus;
 	setInterval(async () => {

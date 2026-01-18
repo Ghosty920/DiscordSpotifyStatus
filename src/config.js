@@ -103,3 +103,33 @@ async function checkClient(clientId, clientSecret) {
 export function saveConfig() {
 	fs.writeFileSync(configPath, JSON.stringify(config, null, 4), 'utf-8');
 }
+
+/**
+ * Add a guild ID with an optional format string.
+ * @param {string} id
+ * @param {string} [format]
+ */
+export function addGuild(id, format = '[[DISPLAY]] - [[TITLE]]') {
+	if (typeof id !== 'string' || !id.trim()) return false;
+	config.GUILDS[id] = format;
+	saveConfig();
+	console.log(chalk.green(`Added guild ${id}`));
+	return true;
+}
+
+/**
+ * Remove a guild ID.
+ * @param {string} id
+ */
+export function removeGuild(id) {
+	if (typeof id !== 'string' || !id.trim()) return false;
+	if (!(id in config.GUILDS)) return false;
+	delete config.GUILDS[id];
+	saveConfig();
+	console.log(chalk.yellow(`Removed guild ${id}`));
+	return true;
+}
+
+export function listGuilds() {
+	return config.GUILDS;
+}

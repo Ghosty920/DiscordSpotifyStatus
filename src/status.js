@@ -17,9 +17,12 @@ export default async function getStatus() {
 			headers: { Authorization: 'Bearer ' + config.ACCESS_TOKEN },
 		});
 		if (!res.ok) return 1;
-		data = await res.json();
+		data = await res.text();
+		if(data.length < 3) return 1; // empty response?
+		data = JSON.parse(data);
 	} catch (err) {
 		logError(err);
+		if (err instanceof SyntaxError) console.log(data);
 		return 1;
 	}
 
