@@ -1,6 +1,6 @@
 import config, { saveConfig } from './config.js';
 import chalk from 'chalk';
-import { logError } from './utils.js';
+import { cleanTrackTitle, logError } from './utils.js';
 
 export default async function getStatus() {
 	if (!config.ACCESS_TOKEN) {
@@ -18,7 +18,7 @@ export default async function getStatus() {
 		});
 		if (!res.ok) return 1;
 		data = await res.text();
-		if(data.length < 3) return 1; // empty response?
+		if (data.length < 3) return 1; // empty response?
 		data = JSON.parse(data);
 	} catch (err) {
 		logError(err);
@@ -29,10 +29,10 @@ export default async function getStatus() {
 	if (!data.is_playing) return 2;
 
 	let title = data.item.name;
-	title = /^(.*?)(?:\s*\((?:feat|ft)[^)]+\))?$/gi.exec(title)[1] ?? title;
+	title = cleanTrackTitle(title);
 
 	return {
-		title: data.item.name,
+		title,
 		artist: data.item.artists[0].name,
 		album: data.item.album.name,
 	};
