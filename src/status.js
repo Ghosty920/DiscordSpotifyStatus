@@ -26,7 +26,7 @@ export default async function getStatus() {
 		return 1;
 	}
 
-	if (!data.is_playing) return 2;
+	if (!data.is_playing || !data.item) return 2;
 
 	let title = data.item.name;
 	title = cleanTrackTitle(title);
