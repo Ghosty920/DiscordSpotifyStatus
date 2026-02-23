@@ -1,11 +1,12 @@
 import figlet from 'figlet';
 import chalk from 'chalk';
-import config, { loadConfig, addGuild, removeGuild, listGuilds } from './config.js';
+import { loadConfig, addGuild, removeGuild, listGuilds } from './config.js';
 import readline from 'node:readline';
 import startServer from './server.js';
 import getStatus from './status.js';
 import { loginConfig, setName } from './client.js';
 import equal from 'fast-deep-equal';
+import { removeDelChars } from './utils.js';
 
 await new Promise(resolve => {
 	figlet('DSs', { font: 'Univers' }, (err, data) => {
@@ -33,7 +34,7 @@ startServer(async (error, server) => {
 	console.log('Console commands: type "help" for list of commands.');
 
 	rl.on('line', (input) => {
-		const line = String(input || '').trim();
+		const line = removeDelChars(String(input || '')).trim();
 		if (!line) return;
 		const parts = line.split(' ');
 		const cmd = parts.shift().toLowerCase().trim();

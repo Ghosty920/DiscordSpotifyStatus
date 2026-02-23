@@ -36,6 +36,21 @@ export function logError(err) {
  */
 export function cleanTrackTitle(title) {
 	const regex =
-		/\s*(?:(?:[-([]\s*[\s\w'"]*(?:bonus|remix|medley|jazz|phonk|remaster|slowed|spee?d up|nightcore|instrumental|tv ver|version|style)[\s\w'".-]*[-)\]]?)|(?:[-([](?:f(?:ea)?t|with|from)\.?[\s\w'"&,-]*[-)\]]?))+$/i;
+		/\s*(?:(?:[-([]\s*[\s\w'"]*(?:bonus|remix|medley|jazz|phonk|remaster|slowed|spee?d up|nightcore|instrumental|tv ver|version|style)[\s\w'".-]*[-)\]]?)|(?:[-([](?:f(?:ea)?t|with|from)\.?(?:[\s\w'"&,]|\p{L})*[-)\]]?))+$/iu;
 	return title.replace(regex, '');
+}
+
+/**
+ * @param {string} str 
+ * @returns {string}
+ */
+export function removeDelChars(str) {
+	let result = str;
+	while (true) {
+		const index = result.indexOf('\x7f');
+		if (index === -1) break;
+		const start = Math.max(0, index - 1);
+		result = result.slice(0, start) + result.slice(index + 1);
+	}
+	return result;
 }

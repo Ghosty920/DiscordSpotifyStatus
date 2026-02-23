@@ -44,7 +44,7 @@ export async function loginConfig() {
 	}
 }
 
-export function login(token) {
+function login(token) {
 	return new Promise((resolve, reject) => {
 		if (typeof token !== 'string') return reject({ code: 'TOKEN_INVALID', dss: true });
 
