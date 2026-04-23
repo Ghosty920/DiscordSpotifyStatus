@@ -1,6 +1,8 @@
-import config, { saveConfig } from './config.js';
+import config, { saveConfig } from '../../config.js';
 import chalk from 'chalk';
-import { cleanTrackTitle, logError } from './utils.js';
+import { logError } from '../consoleUtils.js';
+import { cleanTrackTitle } from '../musicUtils.js';
+import equal from 'fast-deep-equal';
 
 export default async function getStatus() {
 	if (!config.ACCESS_TOKEN) {
@@ -77,5 +79,21 @@ export async function updateToken() {
 	} catch (err) {
 		logError(err);
 		return false;
+	}
+}
+
+let nextRefresh = 0;
+
+/**
+ * @param {(status: {title: string, artist: string, album: string}) => any} callback
+ */
+export async function refreshStatus(callback) {
+	if (config.USED_METHOD !== 1) return;
+
+	const status = await getStatus();
+	nextRefresh = setTimeout(() => refreshStatus(callback), 10 * 1000);
+
+	if (typeof status === 'object' && status.title) {
+		callback?.(status);
 	}
 }

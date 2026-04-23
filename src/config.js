@@ -1,5 +1,5 @@
 import { join as pathJoin } from 'node:path';
-import { ask, logError } from './utils.js';
+import { ask, logError } from './utils/consoleUtils.js';
 import fs from 'node:fs';
 import chalk from 'chalk';
 
@@ -16,21 +16,29 @@ function getConfigPath() {
 	return pathJoin(process.env.HOME, '.config', name, 'config.json');
 }
 
-let config = {
+const defaultConfig = Object.freeze({
 	WARNING: 'Do not share this config with anyone, as it contains sensible data!',
+
+	/**
+	 * 0 = None, 1 = Spotify App, 2 = Spotify Socket
+	 */
+	USED_METHOD: 0,
 
 	CLIENT_ID: process.env.CLIENT_ID ?? null,
 	CLIENT_SECRET: process.env.CLIENT_SECRET ?? null,
 	PORT: Number(process.env.PORT || '61174'),
-
 	REFRESH_TOKEN: null,
 	ACCESS_TOKEN: null,
 	EXPIRES_AT: 0,
 
+	SPOTIFY_COOKIE: process.env.SPOTIFY_COOKIE ?? null,
+
 	DISCORD_TOKEN: process.env.TOKEN ?? null,
 	DISCORD_INTERVAL: 1000,
 	GUILDS: {},
-};
+});
+
+let config = { ...defaultConfig };
 
 export default config;
 
@@ -44,60 +52,43 @@ export async function loadConfig() {
 		saveConfig();
 	}
 
-	if (await checkClient(config.CLIENT_ID, config.CLIENT_SECRET)) return;
-	if (config.CLIENT_ID) {
-		console.warn(chalk.red('Your current app is not valid anymore, please setup a new one.'));
+	let usedMethod = config.USED_METHOD;
+	if (usedMethod === 0) {
+		console.log("Welcome! It seems like this is your first time running the program. Let's set it up!");
+		console.log('You can choose between two methods to fetch your Spotify status:');
+		console.log(
+			`1. ${chalk.blue('Spotify App')}: Fetches the status directly from a Spotify dev application. Safer, but requires ${chalk.green('Spotify Premium')} to work.`
+		);
+		console.log(`2. ${chalk.blue('Spotify Socket')}: Fetches the status from Spotify's official client websocket.`);
 		console.log(' ');
+		while (true) {
+			const choice = (await ask('Choose a method (type the number): ')).trim().toLowerCase();
+			if (choice === '1' || choice === 'spotify app') {
+				usedMethod = 1;
+				break;
+			} else if (choice === '2' || choice === 'spotify socket') {
+				usedMethod = 2;
+				break;
+			} else {
+				console.log(chalk.red('Invalid choice, please type again.'));
+			}
+		}
 	}
 
-	console.log(`Go to ${chalk.blue('https://developer.spotify.com/dashboard')}`);
-	console.log(`Create a new app, with a name and a description (can be anything)`);
-	console.log(`Add the Redirect URI ${chalk.bgBlack(chalk.white(`http://127.0.0.1:${config.PORT}/callback`))}`);
-	console.log(`Click ${chalk.bgBlue(chalk.white('Save'))}, then input the asked values.`);
-	console.log(`PS: You do not need to specify anything without the red star ${chalk.red('*')}`);
-	console.log(' ');
-
-	let clientId, clientSecret;
-	while (true) {
-		clientId = (await ask('Client ID: ')).trim().toLowerCase();
-		clientSecret = (await ask('Client Secret: ')).trim().toLowerCase();
-
-		if (await checkClient(clientId, clientSecret)) break;
-
-		console.warn(chalk.red('The values you put are invalid. Check again.'));
-		console.log(' ');
+	if (usedMethod === 1) {
+		const { default: handleAppConfiguration } = await import('./utils/config/appConfigurator.js');
+		await handleAppConfiguration();
+	} else if (usedMethod === 2) {
+		const { default: handleSocketConfiguration } = await import('./utils/config/socketConfigurator.js');
+		await handleSocketConfiguration();
 	}
-
-	config.CLIENT_ID = clientId;
-	config.CLIENT_SECRET = clientSecret;
+	config.USED_METHOD = usedMethod;
 	saveConfig();
-
-	console.log(chalk.green('The app is valid!'));
-	console.log(' ');
 }
 
-/**
- * @param {string} clientId
- * @param {string} clientSecret
- * @returns {boolean}
- */
-async function checkClient(clientId, clientSecret) {
-	if (typeof clientId !== 'string' || typeof clientSecret !== 'string') return false;
-
-	try {
-		const res = await fetch('https://accounts.spotify.com/api/token', {
-			method: 'POST',
-			headers: {
-				Authorization: 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			body: 'grant_type=client_credentials',
-		});
-		return res.ok;
-	} catch (err) {
-		logError(err);
-		return false;
-	}
+export async function eraseConfig() {
+	config = { ...defaultConfig };
+	saveConfig();
 }
 
 export function saveConfig() {

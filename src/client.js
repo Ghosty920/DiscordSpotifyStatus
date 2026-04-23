@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import config, { saveConfig } from './config.js';
-import { Client } from 'discord.js-selfbot-v13';
-import { ask, sleep } from './utils.js';
+import { Client } from 'djs-selfbot-v13';
+import { ask, sleep } from './utils/consoleUtils.js';
 
 const client = new Client();
 
@@ -14,7 +14,7 @@ export async function loginConfig() {
 			if (!err.dss) console.error(chalk.red('The provided discord token in the config is invalid.'));
 
 			console.log(
-				`Open Discord. Press ${chalk.bgBlack('Ctrl + Shift + I')} (or whatever keys to open Developer Tools)`
+				`Open Discord. Press ${chalk.bgBlack('Ctrl + Shift + I')} (you may need Vencord or to do it in the browser)`
 			);
 			console.log(`Go in the ${chalk.bgBlack('Console')} category, and paste the following code:`);
 			console.log(
@@ -62,8 +62,11 @@ function login(token) {
 export async function setName(status) {
 	if (!client.isReady()) return;
 
-	let failed = 0;
-	for (const guildId of Object.keys(config.GUILDS)) {
+	const guilds = Object.keys(config.GUILDS);
+	if (guilds.length === 0) return;
+
+	let success = 0;
+	for (const guildId of guilds) {
 		const guild = client.guilds.cache.get(guildId);
 		if (!guild) continue;
 		if (!guild.members.me.permissions.has('CHANGE_NICKNAME', true)) continue;
@@ -73,16 +76,16 @@ export async function setName(status) {
 			.replaceAll('[[ARTIST]]', status.artist)
 			.replaceAll('[[ALBUM]]', status.album)
 			.replaceAll('[[DISPLAY]]', client.user.displayName);
+		if (formatted.length > 32) continue;
 		if (guild.members.me.nickname === formatted) continue;
 
 		try {
 			await guild.members.me.setNickname(formatted);
-		} catch (err) {
-			failed++;
-		}
+			success++;
+		} catch (err) {}
 		await sleep(config.DISCORD_INTERVAL);
 	}
-	const success = Object.keys(config.GUILDS).length - failed;
+	const failed = guilds.length - success;
 	console.log(chalk.gray(`Updated on ${success} server${success > 1 ? 's' : ''}.`));
 	if (failed > 0) console.warn(chalk.redBright(`Failed on ${failed} server${failed > 1 ? 's' : ''}.`));
 }

@@ -1,3 +1,5 @@
+.github/
+assets/
 node_modules/
 .dockerignore
 .gitignore
@@ -6,4 +8,5 @@ compose.yml
 config.json
 Dockerfile
 knip.json
+LICENSE
 README.md

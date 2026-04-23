@@ -1,6 +1,6 @@
 import http from 'node:http';
 import config, { saveConfig } from './config.js';
-import { updateToken } from './status.js';
+import { updateToken } from './utils/spotify/appStatus.js';
 import chalk from 'chalk';
 
 /**
