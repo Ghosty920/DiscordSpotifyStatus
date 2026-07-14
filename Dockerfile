@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim
+FROM node:24-slim
 
 ENV NODE_ENV=production
 
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g pnpm
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.local/share/pnpm/store to speed up subsequent builds.
@@ -21,7 +21,7 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 # Copy the rest of the source files into the image.
 COPY . .
 
-RUN chown -R node:node /usr/src/app
+RUN chown -R node:node /app
 
 # Run the application as a non-root user.
 USER node
