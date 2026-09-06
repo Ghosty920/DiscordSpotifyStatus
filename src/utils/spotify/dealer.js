@@ -25,20 +25,28 @@ export default class Dealer {
 	debounceTimer;
 
 	/**
+	 * @type {ReturnType<typeof setTimeout>}
+	 */
+	pingTimer;
+
+	/**
 	 * @param {string} cookie The value of the sp_dc cookie from Spotify
 	 * @param {(music: {title: string, artist: string, album: string}) => any} callback A callback function that will be called when the music changes, with an object containing title, artist and album.
 	 */
 	constructor(cookie, callback) {
 		this.cookie = cookie;
 		this.musicCallback = callback;
+	}
 
-		let nextPing = setTimeout(() => ping(), 30 * 1000);
+	startPing() {
+		clearTimeout(this.pingTimer);
 		const ping = () => {
-			if (this.ws.readyState === WebSocket.OPEN) {
+			if (this.ws && this.ws.readyState === WebSocket.OPEN) {
 				this.ws.send(JSON.stringify({ type: 'ping' }));
-				nextPing = setTimeout(() => ping(), 30 * 1000);
+				this.pingTimer = setTimeout(ping, 30 * 1000);
 			}
 		};
+		this.pingTimer = setTimeout(ping, 30 * 1000);
 	}
 
 	async connect() {
@@ -47,9 +55,18 @@ export default class Dealer {
 		const domains = await resolveDomains();
 		const token = await fetchSpotifyToken(this.cookie);
 		const clientToken = await fetchClientToken(token.clientId);
+
+		if (this.ws) {
+			this.ws.onopen = this.ws.onmessage = this.ws.onclose = null;
+			try {
+				this.ws.close();
+			} catch {}
+		}
+
 		this.ws = new WebSocket(`wss://${domains['dealer-g2'][0]}/?access_token=${token.accessToken}`);
 		this.ws.onopen = () => {
 			console.log('Connected to Spotify websocket');
+			this.startPing();
 		};
 		this.ws.onmessage = async msg => {
 			const data = JSON.parse(msg.data);
@@ -84,6 +101,7 @@ export default class Dealer {
 		};
 		this.ws.onclose = () => {
 			console.log('Disconnected from Spotify websocket');
+			clearTimeout(this.pingTimer);
 			setTimeout(() => {
 				this.connect();
 			}, 5 * 1000);
