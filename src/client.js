@@ -2,8 +2,36 @@ import chalk from 'chalk';
 import config, { saveConfig } from './config.js';
 import { Client } from 'djs-selfbot-v13';
 import { ask, sleep } from './utils/consoleUtils.js';
+import { Options } from 'djs-selfbot-v13';
 
-const client = new Client();
+const client = new Client({
+	makeCache: Options.cacheWithLimits({
+		ApplicationCommandManager: 0,
+		AutoModerationRuleManager: 0,
+		BaseGuildEmojiManager: 0,
+		GuildBanManager: 0,
+		GuildEmojiManager: 0,
+		GuildInviteManager: 0,
+		GuildMemberManager: {
+			maxSize: 1,
+			keepOverLimit: member => member.id === client.user.id,
+		},
+		GuildStickerManager: 0,
+		GuildScheduledEventManager: 0,
+		MessageManager: 0,
+		PresenceManager: 0,
+		ReactionManager: 0,
+		ReactionUserManager: 0,
+		StageInstanceManager: 0,
+		ThreadManager: 0,
+		UserManager: {
+			maxSize: 1,
+			keepOverLimit: user => user.id === client.user.id,
+		},
+		ThreadMemberManager: 0,
+		VoiceStateManager: 0,
+	})
+});
 
 export async function loginConfig() {
 	try {
