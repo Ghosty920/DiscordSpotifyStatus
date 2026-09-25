@@ -16,10 +16,12 @@
 	"dependencies": {
 		"chalk": "^5.6.2",
 		"debug": "^4.4.3",
-		"djs-selfbot-v13": "^3.7.25",
+		"djs-selfbot-v13": "10.9.20",
 		"fast-deep-equal": "^3.1.3",
 		"figlet": "^1.10.0",
+		"lru-cache": "^11.5.3",
 		"otpauth": "^9.5.0",
+		"protobufjs": "^8.8.0",
 		"readline": "^1.3.0"
 	},
 	"devDependencies": {

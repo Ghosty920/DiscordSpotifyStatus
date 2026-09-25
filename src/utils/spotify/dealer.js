@@ -1,6 +1,7 @@
 import config from '../../config.js';
 import { cleanTrackTitle } from '../musicUtils.js';
 import { fetchClientToken, resolveDomains, subscribeToState } from './clientData.js';
+import { getMetadata } from './metadata.js';
 import { fetchSpotifyToken } from './spotifyToken.js';
 
 export default class Dealer {
@@ -83,10 +84,24 @@ export default class Dealer {
 					const music = payload?.cluster?.player_state;
 					const metadata = music?.track?.metadata;
 					if (metadata) {
+						let title = metadata.title;
+						let artist = undefined; // not available by default thanks spotify <3
+						let album = metadata.album_title;
+
+						const uri = metadata.requested_uri;
+						const data = await getMetadata(token, clientToken, uri);
+						const uriData = data?.[uri]?.data;
+						if (uriData) {
+							title = uriData?.title;
+							artist = uriData?.artists?.[0]?.name;
+							album = uriData?.album?.name;
+						}
+
+						if (!title) return;
 						trackData = {
-							title: cleanTrackTitle(metadata?.title),
-							artist: '?', // not available thanks spotify <3
-							album: metadata?.album_title,
+							title: cleanTrackTitle(title),
+							artist: artist ?? '?',
+							album: album ?? '?',
 						};
 					}
 				}

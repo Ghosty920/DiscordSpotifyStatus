@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package spotify.content.contentagnostic.v2;
+
+// Reconstruction basée sur un décodage manuel, octet par octet, du wire
+// format brut (varint / length-delimited) de votre blob. Les numéros de
+// champ et types de wire sont EXACTS (vérifiés sur vos données) ; les NOMS
+// de champs restent des suppositions raisonnables, Spotify ne publiant pas
+// ce schéma.
+
+// Message racine
+message Response {
+  Container container = 2; // field 2, wire type 2 (submessage)
+}
+
+message Container {
+  // ATTENTION : la forme de ce sous-message varie selon les exemples observés
+  // (parfois {1,2} varint+string, parfois {1,2,3} varint+varint+varint).
+  // Impossible de trancher sans plus d'exemples : cf. ContainerId ci-dessous,
+  // qui couvre les deux variantes en champs optionnels plutôt que d'en forcer une.
+  ContainerId id        = 1; // field 1
+  fixed32 unknown_f7    = 7; // field 7 : fixed32, valeur observée 2080a305 (absent dans le 2e exemple)
+  int64   ttl_seconds   = 5; // field 5 : varint, valeur observée 2592000 (= 30 jours) — absent dans le 2e exemple
+  int32   unknown_f2    = 2; // field 2 : varint, valeur observée 220 ou 178
+  repeated Trait traits = 3; // field 3 : répété, un par piste
+}
+
+// Variante A (1er exemple) : {1: varint 200, 2: string "lmLEDQ=="}
+// Variante B (2e exemple)  : {1: varint 200, 2: varint 85755, 3: varint 2592000}
+// D'où les deux champs 2 en oneof, et un field 3 optionnel qui n'apparaît
+// que dans la variante B (peut-être un ttl ou un ID numérique séparé).
+message ContainerId {
+  int32 unknown_id_f1 = 1; // varint, toujours observé à 200
+  oneof id_variant {
+    string encoded_id = 2; // variante A : ID encodé en base64-like
+    int64  numeric_id = 6; // variante B : même field 2, mais numérique -- renommé ici pour éviter le conflit de field number, à VÉRIFIER manuellement selon vos données (peut nécessiter d'utiliser field 2 tel quel si votre outil protobuf accepte un typage dynamique)
+  }
+  int64 extra_f3 = 3; // varint, observé seulement dans la variante B (2592000)
+}
+
+// Sous-message "id" de chaque Trait (structure plus stable, vue 2x identique
+// à ceci près que le champ 2 est toujours une string ici)
+message ShortId {
+  int32  unknown_id_f1 = 1; // varint, valeur observée: 200
+  string encoded_id    = 2; // string, ex: "lmLEDQ==", "r1HwVg=="
+  int64  unknown_f4    = 4; // varint, ex: 86400 (24h) ou 85755
+  int64  ttl_seconds_2 = 5; // varint, ex: 2592000 (30 jours)
+}
+
+message Trait {
+  ShortId id       = 1; // sous-message : id + durées (voir ci-dessus)
+  string  uri      = 2; // ex: "spotify:track:0CSFZBwoS2BIfMHpHasOYS"
+  AnyType type_ref = 3; // référence de type façon google.protobuf.Any
+}
+
+// Équivalent (probable) de google.protobuf.Any : le vrai type du "payload"
+// (field 2) dépend de la valeur de type_url (field 1). Il faut donc décoder
+// le payload en bytes bruts puis choisir le bon message ci-dessous selon
+// le suffixe du type_url ("EntityTypeTrait" vs "IdentityTrait" vu jusqu'ici).
+message AnyType {
+  string type_url = 1;
+  bytes  payload  = 2; // à redécoder manuellement selon type_url (voir Flag / IdentityTrait)
+}
+
+// payload quand type_url se termine par ".EntityTypeTrait"
+message Flag {
+  int32 value = 1; // varint, valeur observée: 1 (probablement un booléen "true")
+}
+
+// payload quand type_url se termine par ".IdentityTrait"
+message IdentityTrait {
+  string          title_label = 1; // ex: "Titre" (probablement le libellé du champ suivant, multi-langue ?)
+  string          title       = 2; // ex: "World of the Dream"
+  AlbumRef        album       = 4;
+  repeated ArtistRef artists  = 5; // répété : un par artiste (2 vus dans l'exemple)
+}
+
+message AlbumRef {
+  string name = 1; // ex: "Frenchcore Worldwide 05"
+  string uri  = 2; // ex: "spotify:album:6QyjqD9RDtPZIVzISBbK0B"
+}
+
+message ArtistRef {
+  string name = 1; // ex: "Sefa", "Dr. Peacock"
+  string uri  = 2; // ex: "spotify:artist:0caJEGgVuXuSHhhrMCmlkI"
+}
