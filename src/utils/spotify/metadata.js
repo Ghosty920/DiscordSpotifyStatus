@@ -78,6 +78,7 @@ export async function getMetadata(token, clientToken, ...uris) {
 
 		if (!res.ok) {
 			console.error(`Failed to fetch metadata for ${uris.join(', ')}: ${res.status} ${res.statusText}`);
+			console.error(await res.text());
 			return null;
 		}
 
@@ -97,6 +98,10 @@ export async function getMetadata(token, clientToken, ...uris) {
 				];
 			})
 		);
+
+		for (const [uri, metadata] of Object.entries(data)) {
+			cache.set(uri, metadata);
+		}
 
 		return data;
 	} catch (error) {
