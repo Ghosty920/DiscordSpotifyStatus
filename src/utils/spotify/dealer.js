@@ -81,10 +81,13 @@ export default class Dealer {
 				await sleep(5000);
 			}
 		}
-		if(this.spotifyToken.accessTokenExpirationTimestampMs) {
-			this.spotifyTokenRefreshTimeout = setTimeout(() => {
-				this.refreshSpotifyToken();
-			}, this.spotifyToken.accessTokenExpirationTimestampMs - Date.now() - 60 * 1000);
+		if (this.spotifyToken.accessTokenExpirationTimestampMs) {
+			this.spotifyTokenRefreshTimeout = setTimeout(
+				() => {
+					this.refreshSpotifyToken();
+				},
+				this.spotifyToken.accessTokenExpirationTimestampMs - Date.now() - 60 * 1000
+			);
 		} else {
 			console.error('Spotify token does not have an expiration timestamp?');
 			console.error(this.spotifyToken);
@@ -101,7 +104,7 @@ export default class Dealer {
 				await sleep(5000);
 			}
 		}
-		if(this.clientToken.refresh_after_seconds) {
+		if (this.clientToken.refresh_after_seconds) {
 			this.clientTokenRefreshTimeout = setTimeout(() => {
 				this.refreshClientToken();
 			}, this.clientToken.refresh_after_seconds * 1000);
