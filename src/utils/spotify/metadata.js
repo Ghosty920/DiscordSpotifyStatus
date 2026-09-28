@@ -1,5 +1,5 @@
 import protobuf from 'protobufjs';
-import { LRUCache } from 'lru-cache'
+import { LRUCache } from 'lru-cache';
 
 const proto = await new Promise((resolve, reject) => {
 	protobuf.load('protos/extended-metadata.proto', (err, root) => {
@@ -12,10 +12,10 @@ const proto = await new Promise((resolve, reject) => {
 });
 
 const cache = new LRUCache({
-  max: 500,
-  ttl: 1000 * 60 * 60 * 24,
-  updateAgeOnGet: true,
-})
+	max: 500,
+	ttl: 1000 * 60 * 60 * 24,
+	updateAgeOnGet: true,
+});
 
 const ResponseType = proto.lookupType('spotify.content.contentagnostic.v2.Response');
 const IdentityTraitType = proto.lookupType('spotify.content.contentagnostic.v2.IdentityTrait');
@@ -72,7 +72,9 @@ export async function getMetadata(token, clientToken, ...uris) {
 				'content-type': 'application/json',
 			},
 			body: JSON.stringify({
-				entityRequest: [...missingUris.map(uri => ({ entityUri: uri, query: [{ extensionKind: 178, etag: '' }] }))],
+				entityRequest: [
+					...missingUris.map(uri => ({ entityUri: uri, query: [{ extensionKind: 178, etag: '' }] })),
+				],
 			}),
 		});
 

@@ -161,7 +161,7 @@ export default class Dealer {
 					if (metadata) {
 						const uri = metadata.requested_uri;
 
-						if(uri === lastUriSeen) return;
+						if (uri === lastUriSeen) return;
 						lastUriSeen = uri;
 
 						let title = metadata.title;

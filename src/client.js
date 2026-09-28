@@ -30,7 +30,7 @@ const client = new Client({
 		},
 		ThreadMemberManager: 0,
 		VoiceStateManager: 0,
-	})
+	}),
 });
 
 export async function loginConfig() {
