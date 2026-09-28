@@ -52,6 +52,11 @@ export default class Dealer {
 	pingTimer;
 
 	/**
+	 * @type {ReturnType<typeof setTimeout>}
+	 */
+	reconnectTimer;
+
+	/**
 	 * @param {string} cookie The value of the sp_dc cookie from Spotify
 	 * @param {(music: {title: string, artist: string, album: string}) => any} callback A callback function that will be called when the music changes, with an object containing title, artist and album.
 	 */
@@ -73,44 +78,48 @@ export default class Dealer {
 
 	async refreshSpotifyToken() {
 		clearTimeout(this.spotifyTokenRefreshTimeout);
-		while (!this.spotifyToken) {
+		let token = null;
+		while (!token) {
 			try {
-				this.spotifyToken = await fetchSpotifyToken(this.cookie);
+				token = await fetchSpotifyToken(this.cookie);
 			} catch (error) {
 				console.error('Error fetching Spotify token:', error);
 				await sleep(5000);
 			}
 		}
-		if (this.spotifyToken.accessTokenExpirationTimestampMs) {
+		this.spotifyToken = token;
+
+		if (token.accessTokenExpirationTimestampMs) {
 			this.spotifyTokenRefreshTimeout = setTimeout(
 				() => {
 					this.refreshSpotifyToken();
 				},
-				this.spotifyToken.accessTokenExpirationTimestampMs - Date.now() - 60 * 1000
+				token.accessTokenExpirationTimestampMs - Date.now() - 60 * 1000
 			);
 		} else {
-			console.error('Spotify token does not have an expiration timestamp?');
-			console.error(this.spotifyToken);
+			console.error('Spotify token does not have an expiration timestamp?', token);
 		}
 	}
 
 	async refreshClientToken() {
 		clearTimeout(this.clientTokenRefreshTimeout);
-		while (!this.clientToken) {
+		let token = null;
+		while (!token) {
 			try {
-				this.clientToken = await fetchClientToken(this.spotifyToken.clientId);
+				token = await fetchClientToken(this.spotifyToken.clientId);
 			} catch (error) {
 				console.error('Error fetching client token:', error);
 				await sleep(5000);
 			}
 		}
-		if (this.clientToken.refresh_after_seconds) {
+		this.clientToken = token;
+
+		if (token.refresh_after_seconds) {
 			this.clientTokenRefreshTimeout = setTimeout(() => {
 				this.refreshClientToken();
-			}, this.clientToken.refresh_after_seconds * 1000);
+			}, token.refresh_after_seconds * 1000);
 		} else {
-			console.error('Client token does not have a refresh_after_seconds?');
-			console.error(this.clientToken);
+			console.error('Client token does not have a refresh_after_seconds?', token);
 		}
 	}
 
@@ -127,6 +136,8 @@ export default class Dealer {
 				this.ws.close();
 			} catch {}
 		}
+
+		let lastUriSeen = null;
 
 		this.ws = new WebSocket(`wss://${domains['dealer-g2'][0]}/?access_token=${this.spotifyToken.accessToken}`);
 		this.ws.onopen = () => {
@@ -148,11 +159,15 @@ export default class Dealer {
 					const music = payload?.cluster?.player_state;
 					const metadata = music?.track?.metadata;
 					if (metadata) {
+						const uri = metadata.requested_uri;
+
+						if(uri === lastUriSeen) return;
+						lastUriSeen = uri;
+
 						let title = metadata.title;
 						let artist = undefined; // not available by default thanks spotify <3
 						let album = metadata.album_title;
 
-						const uri = metadata.requested_uri;
 						const data = await getMetadata(this.spotifyToken, this.clientToken, uri);
 						const uriData = data?.[uri]?.data;
 						if (uriData) {
@@ -181,7 +196,8 @@ export default class Dealer {
 		this.ws.onclose = () => {
 			console.log('Disconnected from Spotify websocket');
 			clearTimeout(this.pingTimer);
-			setTimeout(() => {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = setTimeout(() => {
 				this.connect();
 			}, 5 * 1000);
 		};

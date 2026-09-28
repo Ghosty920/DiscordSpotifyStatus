@@ -137,6 +137,11 @@ export async function fetchSpotifyToken(cookie) {
 	});
 	const json = await res.json();
 
+	if (json.isAnonymous === true) {
+		console.error('Spotify token fetch returned anonymous token. Please update your sp_dc cookie.');
+		// make so it asks the user for a new cookie now
+	}
+
 	return { ...json, tokenType: 'Bearer' };
 }
 
