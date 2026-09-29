@@ -1,15 +1,7 @@
 import protobuf from 'protobufjs';
 import { LRUCache } from 'lru-cache';
 
-const proto = await new Promise((resolve, reject) => {
-	protobuf.load('protos/extended-metadata.proto', (err, root) => {
-		if (err) {
-			reject(err);
-		} else {
-			resolve(root);
-		}
-	});
-});
+const proto = await protobuf.load('protos/extended-metadata.proto');
 
 const cache = new LRUCache({
 	max: 500,
@@ -22,10 +14,12 @@ const IdentityTraitType = proto.lookupType('spotify.content.contentagnostic.v2.I
 const FlagType = proto.lookupType('spotify.content.contentagnostic.v2.Flag');
 
 /**
- * @param {{typeUrl: string, payload: Uint8Array}} typeRef
- * @returns {{kind: string, data: any}}
+ * @param {{typeUrl: string, payload: Uint8Array}|null|undefined} typeRef
+ * @returns {{kind: string, data?: any, typeUrl?: string, rawPayload?: string}|null}
  */
 function decodeTraitPayload(typeRef) {
+	if (!typeRef?.typeUrl) return null; // typeRef can be null
+
 	const { typeUrl, payload } = typeRef;
 
 	if (typeUrl.endsWith('IdentityTrait')) {
@@ -40,16 +34,19 @@ function decodeTraitPayload(typeRef) {
 }
 
 /**
+ * Fetches metadata for the given URIs.
+ * Throws on failure; the error has a `.status` property for HTTP errors (e.g. 401).
+ *
  * @param {{tokenType: string, accessToken: string}} token
  * @param {{token: string}} clientToken
  * @param {string[]} uris
- * @returns {Promise<Record<string, any>|null>}
+ * @returns {Promise<Record<string, {uri: string, kind: string, data?: any}>>}
  */
 export async function getMetadata(token, clientToken, ...uris) {
 	const result = {};
 	const missingUris = [];
 
-	for (const uri of uris) {
+	for (const uri of uris.filter(Boolean)) {
 		const cached = cache.get(uri);
 		if (cached) {
 			result[uri] = cached;
@@ -58,13 +55,13 @@ export async function getMetadata(token, clientToken, ...uris) {
 		}
 	}
 
-	if (missingUris.length === 0) {
-		return result;
-	}
+	if (missingUris.length === 0) return result;
 
+	let res;
 	try {
-		const res = await fetch(`https://spclient.wg.spotify.com/extended-metadata/v0/extended-metadata`, {
+		res = await fetch('https://spclient.wg.spotify.com/extended-metadata/v0/extended-metadata', {
 			method: 'POST',
+			signal: AbortSignal.timeout(10_000),
 			headers: {
 				accept: 'application/protobuf',
 				authorization: `${token.tokenType} ${token.accessToken}`,
@@ -72,42 +69,48 @@ export async function getMetadata(token, clientToken, ...uris) {
 				'content-type': 'application/json',
 			},
 			body: JSON.stringify({
-				entityRequest: [
-					...missingUris.map(uri => ({ entityUri: uri, query: [{ extensionKind: 178, etag: '' }] })),
-				],
+				entityRequest: missingUris.map(uri => ({ entityUri: uri, query: [{ extensionKind: 178, etag: '' }] })),
 			}),
 		});
-
-		if (!res.ok) {
-			console.error(`Failed to fetch metadata for ${uris.join(', ')}: ${res.status} ${res.statusText}`);
-			console.error(await res.text());
-			return null;
-		}
-
-		const buffer = Buffer.from(await res.arrayBuffer());
-		const message = ResponseType.decode(buffer);
-		const traits = message.container.traits;
-
-		const data = Object.fromEntries(
-			traits.map(trait => {
-				const decoded = decodeTraitPayload(trait.typeRef);
-				return [
-					trait.uri,
-					{
-						uri: trait.uri,
-						...decoded,
-					},
-				];
-			})
-		);
-
-		for (const [uri, metadata] of Object.entries(data)) {
-			cache.set(uri, metadata);
-		}
-
-		return data;
-	} catch (error) {
-		console.error(`Error fetching metadata for ${uris.join(', ')}:`, error);
-		return null;
+	} catch (err) {
+		throw new Error(`metadata network error for ${missingUris.join(', ')}: ${err.message}`, { cause: err });
 	}
+
+	if (!res.ok) {
+		const body = (await res.text().catch(() => '')).slice(0, 100);
+		const error = new Error(
+			`metadata HTTP ${res.status} ${res.statusText} for ${missingUris.join(', ')} ${body}`.trim()
+		);
+		error.status = res.status;
+		throw error;
+	}
+
+	const buffer = Buffer.from(await res.arrayBuffer());
+	const message = ResponseType.decode(buffer);
+	const traits = message?.container?.traits ?? [];
+
+	for (const trait of traits) {
+		if (!trait?.uri) continue;
+
+		let decoded;
+		try {
+			decoded = decodeTraitPayload(trait.typeRef);
+		} catch (err) {
+			console.warn(`Could not decode trait for ${trait.uri}: ${err.message}`);
+			continue;
+		}
+		if (!decoded) continue;
+
+		// several traits can share the same URI
+		if (result[trait.uri]?.kind === 'IdentityTrait' && decoded.kind !== 'IdentityTrait') continue;
+
+		result[trait.uri] = { uri: trait.uri, ...decoded };
+	}
+
+	// only cache what is actually useful
+	for (const uri of missingUris) {
+		if (result[uri]?.kind === 'IdentityTrait') cache.set(uri, result[uri]);
+	}
+
+	return result;
 }

@@ -44,3 +44,13 @@ export function removeDelChars(str) {
 	}
 	return result;
 }
+
+/**
+ * @param {string} str
+ * @param {number} max
+ * @returns {string}
+ */
+export function sliceString(str, max) {
+	if (str.length <= max) return str;
+	return str.slice(0, max) + '…';
+}

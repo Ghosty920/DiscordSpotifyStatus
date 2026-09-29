@@ -156,33 +156,26 @@ export default class Dealer {
 				let trackData = null;
 
 				for (const payload of data.payloads) {
-					const music = payload?.cluster?.player_state;
-					const metadata = music?.track?.metadata;
-					if (metadata) {
-						const uri = metadata.requested_uri;
+					const track = payload?.cluster?.player_state?.track;
+					const metadata = track?.metadata;
+					if (!metadata) continue;
 
-						if (uri === lastUriSeen) return;
-						lastUriSeen = uri;
+					const uri = metadata.requested_uri ?? track.uri;
+					if (!uri || uri === this.lastUriSeen) continue;
+					this.lastUriSeen = uri;
 
-						let title = metadata.title;
-						let artist = undefined; // not available by default thanks spotify <3
-						let album = metadata.album_title;
+					const info = await this.fetchTrackInfo(uri);
+					// no metadata -> allow a retry on the next update
+					if (!info && this.lastUriSeen === uri) this.lastUriSeen = null;
 
-						const data = await getMetadata(this.spotifyToken, this.clientToken, uri);
-						const uriData = data?.[uri]?.data;
-						if (uriData) {
-							title = uriData?.title;
-							artist = uriData?.artists?.[0]?.name;
-							album = uriData?.album?.name;
-						}
+					const title = info?.title ?? metadata.title;
+					if (!title) continue;
 
-						if (!title) return;
-						trackData = {
-							title: cleanTrackTitle(title),
-							artist: artist ?? '?',
-							album: album ?? '?',
-						};
-					}
+					trackData = {
+						title: cleanTrackTitle(title),
+						artist: info?.artists?.[0]?.name ?? '?',
+						album: info?.album?.name ?? metadata.album_title ?? '?',
+					};
 				}
 
 				if (trackData) {
@@ -201,5 +194,25 @@ export default class Dealer {
 				this.connect();
 			}, 5 * 1000);
 		};
+	}
+
+	async fetchTrackInfo(uri) {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				const result = await getMetadata(this.spotifyToken, this.clientToken, uri);
+				const entry = result?.[uri];
+				return entry?.kind === 'IdentityTrait' ? entry.data : null;
+			} catch (error) {
+				if (error.status === 401 && attempt === 0) {
+					console.warn('Metadata request got 401, refreshing tokens and retrying...');
+					await this.refreshSpotifyToken();
+					await this.refreshClientToken();
+					continue;
+				}
+				console.error(`Failed to fetch metadata for ${uri}: ${error.message}`);
+				return null;
+			}
+		}
+		return null;
 	}
 }
